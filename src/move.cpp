@@ -1,0 +1,617 @@
+#include "move.h"
+
+float moveDeg = 0;
+float ball_deg = 0;
+float mouth_ball_deg = 0;
+float ball_dis_integral = 0;
+float dis_error = 0;
+//float ball_dis = 0;
+int deg_speed = 0;
+int last_ball_dis = 0;
+float i_limit_dis = 1.0f;
+int MoveSpeed = MotorSpeed;
+int ball_dis = 0;
+float dt_dis = 0;
+unsigned long dis_time = 0;
+unsigned long last_dtime = 0;
+unsigned long last_yawTime = 0;
+int Vex = 0;
+int Vey = 0;
+int x = 0;
+int y = 0; 
+int last_x = 0;
+int last_y = 0;
+int speedmix = 0;
+int Goal_movedeg = 0;
+float change_kd = 0.05f;
+int dt_x = 0;
+int dt_y = 0;
+int dt_yaw = 0;
+int last_yaw = 0;
+
+int radius = 40; //半径
+float CircumCircle = 0.0f; //外接円
+
+PID ballPID(1.0f, 0.2f, 0.05f, 0.2f); // P , I , D , ローパス(0.01 ~ 1.0)
+
+void move_setup()
+{
+    //Serial.begin(115200);
+
+    ballPID.setDeadband(0.5f);
+
+    ballPID.useP(true);
+    ballPID.useD(true);
+    ballPID.useI(true);
+}
+
+
+void move_loop()
+{
+    //ballPID.setGains(1.0f, 0.0f, change_kd);
+    static uint32_t last_time = micros();
+    Serial.print("micros");
+    Serial.println(micros() - last_time);
+    last_time = micros();
+
+    MoveSpeed = MotorSpeed;
+
+    ball_deg = IRv.deg;
+    if (CamBallDetected == true)
+    {
+        ball_dis = CameraV.orange_dis;
+        ball_deg = CameraV.orange_deg;
+    }
+    else
+    {
+        ball_dis = IRv.dis;
+        ball_deg = IRv.deg;
+    }
+    if(ball_dis < 100)
+    {
+        distanceDevide = true;
+    }
+    else if(ball_dis > 120)
+    {
+        distanceDevide = false;
+    }
+    //MotorSpeed = 75;
+    dis_error = (last_ball_dis) * 0.0000001;  //255, 0 / 2.15, -0.40 //もともとは、- 40
+    if(ball_deg > 180)
+    {
+        ball_deg = ball_deg - 360;
+    }
+
+    if (ball_dis < last_ball_dis)
+    {
+        dis_time = millis();
+    }
+    /* 
+    else if (ball_dis < 40)
+    {
+        dt_dis = 0;
+    } */
+
+    dt_dis = (millis() - dis_time) * 0.6;
+    
+    if (fabsf(dis_error) < 0.000005) //_deadband仮
+    {
+        dis_error = 0.0f;
+    }
+
+    ball_dis_integral += dis_error * dis_time * 0.1f; // 誤差に時間をかけて積み上げる
+    // 積分が溜まりすぎると、目標を超えても止まらなくなるので制限をかける
+    //ball_dis_integral = constrain(ball_dis_integral, -i_limit_dis, i_limit_dis);
+    /* 
+    Serial.print("lasdis");
+    Serial.print(last_ball_dis);
+    Serial.print("Error");
+    Serial.print(dis_error);
+    Serial.print(", INTE");
+    Serial.print(ball_dis_integral);
+    Serial.print(", dt_dis");
+    Serial.println(dt_dis); */
+    if (IRv.detected == false || LineNeed == true)
+    {
+        ball_dis_integral = 0;
+        MoveSpeed = MotorSpeed;
+    }
+    else
+    {
+        MoveSpeed = constrain(MotorSpeed + ball_dis_integral, MotorSpeed, 85);
+    }
+
+    if (MoveSpeed >= 88)
+    {
+        //digitalWrite(LED4, HIGH);
+    }
+    else
+    {
+        //digitalWrite(LED4, LOW);
+    }
+    
+    if(IRv.detected == true)
+    {
+        //ball_deg = CameraV.orange_deg;
+        /* 
+        if (Delection_Mode == true && GoalDis < 80 && abs(ball_deg) < 35 && ball_deg * GoalDeg >= 0) 
+        {
+            moveDeg = ball_deg;
+        } */
+        x = ball_dis * sin(deg_radian(ball_deg));
+        y = ball_dis * cos(deg_radian(ball_deg)); 
+        /* 
+        x = CameraV.orange_dis * sin(deg_radian(ball_deg));
+        y = CameraV.orange_dis * cos(deg_radian(ball_deg));  *///25~27
+/*         int dt_x = x - last_x;
+        int dt_y = y - last_y; */
+        if((millis() - last_yawTime) > 100)
+        {
+            dt_yaw = yaw_BNO - last_yaw;
+            last_yaw = yaw_BNO;
+            last_yawTime = millis();
+            deg_speed = dt_yaw / 0.10f;
+            Serial.print("deg_speed = ");
+            Serial.print(deg_speed); //abs(deg_speed)が20より大きかったら切り替える
+        }
+        
+        if((micros() - last_dtime) > 200000)
+        {
+            dt_x = x - last_x;
+            dt_y = y - last_y;
+            last_x = x;
+            last_y = y;
+            Serial.print("dt_x ");
+            Serial.println(dt_x);
+
+            last_dtime = micros();
+        }
+
+        float R_speed = sqrt(dt_x * dt_x + dt_y * dt_y) / 0.025;
+        Serial.print("dt_x ");
+        Serial.println(dt_x);
+
+        change_kd = (15.0f - fabs(x))/ 50.0f;
+        if(change_kd < 0)            
+        {
+            change_kd = 0.05f;
+        }
+        //moveDeg = ball_deg;
+        ballPID.setGains(0.8f, 0.1f, 0.05f);
+        ballPID.process(x, 0.0f, true);
+        moveDeg = -ballPID.output();
+
+        mouth_ball_deg = radian_deg(atan2(x , y - 16)); 
+        /* 
+        Vex = -gz_LSM * x;
+        Vey = gz_LSM * y;
+        speedmix = sqrt(Vex * Vex + Vey * Vey);
+        Goal_movedeg = atan2(Vex , Vey); */
+
+        //float mouth_ball_deg = radian_deg(atan2(x , y - 18));    //26は実測値
+
+       // ball_deg = mouth_ball_deg;
+
+/* 
+        Serial.print("x,y軸");
+        Serial.print(x);
+        Serial.print(", ");
+        Serial.print(y);
+        Serial.print(", ");
+        Serial.print(mouth_ball_deg);
+        Serial.println("°");  */
+
+        //ball_dis = ball_dis * 1.2;
+        CircumCircle = radian_deg(asin(radius/ ball_dis));
+        //Serial.print("Circum=");
+        //Serial.println(CircumCircle);
+        if(y > 0 && dt_y < -70)
+        {
+            MoveSpeed = MoveSpeed * 0.7;
+        }
+
+        if(abs(x) < 20 && y > 4 && digitalRead(Catch_PIN) == false)
+        {
+            if(dt_x > -90 && dt_x < -60)
+            {
+                MoveSpeed = MoveSpeed * 0.7;
+            }
+            else if(dt_x <= -90)
+            {
+                MoveSpeed = MoveSpeed * 0.4;
+            }
+        }
+
+/*             change_kd = (15.0f - fabs(x))/ 50.0f;
+            if(change_kd < 0)            
+            {
+                change_kd = 0.05f;
+            }
+            //moveDeg = ball_deg;
+            ballPID.setGains(1.0f, 0.0f, change_kd);
+            ballPID.process(x, 0.0f, true);
+            moveDeg = -ballPID.output(); */
+
+
+        if(abs(x) < 10 && y > 0 )
+        {
+/*             change_kd = (15.0f - fabs(x))/ 50.0f;
+            if(change_kd < 0)            
+            {
+                change_kd = 0.05f;
+            }
+            //moveDeg = ball_deg;
+            ballPID.setGains(1.0f, 0.0f, change_kd);
+            ballPID.process(x, 0.0f, true);
+            moveDeg = -ballPID.output(); */ 
+            if(y > 30)
+            {
+                moveDeg = mouth_ball_deg;
+            }
+            else
+            {
+                moveDeg = -ballPID.output();
+            }
+            //moveDeg = -ballPID.output();
+
+            if(digitalRead(Catch_PIN) == true)
+            {
+                moveDeg = 0;
+            }
+        }
+        else
+        {
+
+            if(ball_deg > 0)
+            {
+                moveDeg = mouth_ball_deg + (290 - ball_dis) / 5;
+            }
+            else if (ball_deg < 0)
+            {
+                moveDeg = mouth_ball_deg - (290 - ball_dis) / 5;
+            }
+
+            if(deg_speed > 20)
+            {
+                moveDeg = moveDeg + 10;
+            }
+            else if(deg_speed < -20)
+            {
+                moveDeg = moveDeg -10;
+            }
+        }
+
+/*         last_x = x;
+        last_y = y; */
+
+
+/*         else if(y < 0)
+        {
+            if(mouth_ball_deg > 0)
+            {
+                if(R_speed < 120)
+                {
+                    moveDeg = ball_deg + CircumCircle + 40;
+                }
+                else
+                {
+                    moveDeg = ball_deg + CircumCircle + 30;
+                }
+            }
+            else
+            {
+                if(R_speed < 120)
+                {
+                    moveDeg = ball_deg - CircumCircle - 40;
+                }
+                else
+                {
+                    moveDeg = ball_deg - CircumCircle - 30;
+                }
+            } */
+            //moveDeg = ball_deg + CircumCircle;
+
+            //moveDeg = (abs(ball_deg) + 30);
+/*             if(x > 0)
+            {
+                moveDeg = ball_deg + 30;
+            }
+            else
+            {
+                moveDeg = ball_deg - 30;
+            } */
+        }
+        else
+        {
+            motorsPdMove();
+        }
+/*         else if(y > 0)
+        {
+            if(x > 15)
+            {
+                moveDeg = mouth_ball_deg + 35;
+            }
+            else if(x < -15)
+            {
+                moveDeg = mouth_ball_deg - 35;
+            }
+        } */
+        
+        //moveDeg = DegRangeChange(moveDeg, 180);
+        if(moveDeg > 180)
+        {
+            moveDeg = moveDeg - 360;
+        }
+        else if(moveDeg < -180)
+        {
+            moveDeg = moveDeg + 360;
+        }
+/*     else
+    {
+        moveDeg = ball_deg;
+    } */
+
+
+    
+/*     if(IRv.detected == true  &&  distanceDevide == true)
+    {
+        //ball_deg = CameraV.orange_deg;
+        /* 
+        if (Delection_Mode == true && GoalDis < 80 && abs(ball_deg) < 35 && ball_deg * GoalDeg >= 0) 
+        {
+            moveDeg = ball_deg;
+        } */
+/*         x = CameraV.orange_dis * sin(deg_radian(ball_deg));
+        y = CameraV.orange_dis * cos(deg_radian(ball_deg)); //25~27
+        int dt_x = x - last_x;
+        int dt_y = y - last_y;
+        float R_speed = sqrt(dt_x * dt_x + dt_y * dt_y) / 0.025;
+        Serial.println(R_speed);
+        
+        mouth_ball_deg = radian_deg(atan2(x , y - 22));  */
+/*         Vex = -gz_LSM * x;
+        Vey = gz_LSM * y;
+        speedmix = sqrt(Vex * Vex + Vey * Vey);
+        Goal_movedeg = atan2(Vex , Vey); */
+
+        //float mouth_ball_deg = radian_deg(atan2(x , y - 18));    //26は実測値
+
+       // ball_deg = mouth_ball_deg;
+
+/*         Serial.print("x,y軸");
+        Serial.print(x);
+        Serial.print(", ");
+        Serial.print(y);
+        Serial.print(", ");
+        Serial.print(mouth_ball_deg);
+        Serial.println("°"); 
+
+        ball_dis = ball_dis * 1.2;
+        CircumCircle = radian_deg(asin(radius/ ball_dis));
+        Serial.print("Circum=");
+        Serial.println(CircumCircle);
+        
+
+        if(abs(x) < 15 && y > 0)
+        {
+            change_kd = (15.0f - fabs(x))/ 50.0f;
+            if(change_kd < 0)
+            {
+                change_kd = 0.05f;
+            }
+            //moveDeg = ball_deg;
+            ballPID.setGains(1.0f, 0.0f, change_kd);
+            ballPID.process(x, 0.0f, true);
+            moveDeg = -ballPID.output();
+
+            if(digitalRead(Catch_PIN) == true)
+            {
+                moveDeg = 0;
+            }
+            else if(abs(x) < 30 && y > 0 && y < 50)
+            {
+                MoveSpeed = MoveSpeed * 75 / 85;
+            }
+        }
+        else if(y < 0)
+        {
+            if(mouth_ball_deg > 0)
+            {
+                if(R_speed < 120)
+                {
+                    moveDeg = ball_deg + CircumCircle + 40;
+                }
+                else
+                {
+                    moveDeg = ball_deg + CircumCircle + 30;
+                }
+            }
+            else
+            {
+                if(R_speed < 120)
+                {
+                    moveDeg = ball_deg - CircumCircle - 40;
+                }
+                else
+                {
+                    moveDeg = ball_deg - CircumCircle - 30;
+                }
+            } */
+            //moveDeg = ball_deg + CircumCircle;
+
+            //moveDeg = (abs(ball_deg) + 30);
+/*             if(x > 0)
+            {
+                moveDeg = ball_deg + 30;
+            }
+            else
+            {
+                moveDeg = ball_deg - 30;
+            } */
+//        }
+
+        
+        //moveDeg = DegRangeChange(moveDeg, 180);
+/*       if(moveDeg > 180)
+        {
+            moveDeg = moveDeg - 360;
+        }
+        else if(moveDeg < -180)
+        {
+            moveDeg = moveDeg + 360;
+        }
+    }
+    else
+    {
+        moveDeg = ball_deg;
+    } */
+    
+    last_ball_dis = ball_dis;
+/*     last_x = x;
+    last_y = y; */
+}
+/* #include "move.h"
+
+//============================
+// 回り込み半径
+//============================
+const int N = 9;
+const int r = 70.0f;
+float moveDeg = 0;
+
+float x[N] = {
+    -180,
+    -135,
+    -90,
+    -45,
+    0,
+    45,
+    90,
+    135,
+    180
+};
+
+float y[N] = {
+    -180,
+    -175,
+    -130,
+    -70,
+    0,
+    70,
+    130,
+    175,
+    180
+};
+
+// 接線（あとで自由に変更）
+float m[N] = {
+    2.0,
+    1.5,
+    1.0,
+    0.5,
+    0.0,
+    0.5,
+    1.0,
+    1.5,
+    2.0
+};
+
+//================================================
+// 三次エルミートスプライン
+//================================================
+float spline(float input)
+{
+    if(input <= x[0]) return y[0];
+    if(input >= x[N-1]) return y[N-1];
+
+    int i;
+
+    for(i=0;i<N-1;i++)
+    {
+        if(input >= x[i] && input <= x[i+1])
+            break;
+    }
+
+    float h = x[i+1]-x[i];
+    float t = (input-x[i])/h;
+
+    float h00 = 2*t*t*t - 3*t*t + 1;
+    float h10 = t*t*t - 2*t*t + t;
+    float h01 = -2*t*t*t + 3*t*t;
+    float h11 = t*t*t - t*t;
+
+    return h00*y[i]
+         + h10*h*m[i]
+         + h01*y[i+1]
+         + h11*h*m[i+1];
+}
+
+//================================================
+// Saphir回り込み
+//================================================
+float getMoveDeg(float ball_deg,float ball_dis)
+{
+    float ball_rad = radians(ball_deg);
+
+    if(ball_dis>=r)
+    {
+        float theta=asin(r/ball_dis);
+
+        if(ball_rad>=0)
+            ball_rad+=theta;
+        else
+            ball_rad-=theta;
+    }
+    else
+    {
+        if(ball_rad>=0)
+        {
+            ball_rad+=PI/2;
+        }
+        else
+        {
+            ball_rad-=PI/2;
+        }
+    }
+
+    float target_deg=degrees(ball_rad);
+
+    // 三次スプライン補間
+    return spline(target_deg);
+}
+
+void move_setup()
+{
+    //Serial.begin(115200);
+}
+
+void move_loop()
+{
+    // センサーから取得
+    float ball_deg = IRv.deg;
+    float ball_dis = 255 - IRv.dis;
+
+
+    //==========================
+    // フェーズ切り替え
+    //==========================
+
+    if (abs(ball_deg) < 10.0 )
+    {
+        // ボールを取りに行く
+        moveDeg = ball_deg;
+    }
+    else if(ball_dis > r)
+    {
+        // 回り込み
+        moveDeg = getMoveDeg(ball_deg, ball_dis);
+    }
+
+    Serial.print("Move Deg : ");
+    Serial.println(moveDeg);
+
+    // motorsMove(moveDeg, 80);
+
+    //delay(20);
+} */
+
