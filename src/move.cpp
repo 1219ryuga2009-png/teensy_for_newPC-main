@@ -177,12 +177,26 @@ void move_loop()
             change_kd = 0.05f;
         }
         //moveDeg = ball_deg;
-        ballPID.setGains(0.8f, 0.1f, 0.05f);
+        ballPID.setGains(1.0f, 0.1f, 0.1f);
         ballPID.process(x, 0.0f, true);
-        moveDeg = -ballPID.output();
+        //moveDeg = -ballPID.output();
 
-        mouth_ball_deg = radian_deg(atan2(x , y - 16)); 
+        mouth_ball_deg = radian_deg(atan2(x , y - 14)); 
+
+        if(y < 0)
+        {
+            if(mouth_ball_deg > 0)
+            {
+                mouth_ball_deg = mouth_ball_deg + 10;
+            }
+            else
+            {
+                mouth_ball_deg = mouth_ball_deg - 10;
+            }
+        }
+        
         /* 
+    
         Vex = -gz_LSM * x;
         Vey = gz_LSM * y;
         speedmix = sqrt(Vex * Vex + Vey * Vey);
@@ -212,11 +226,11 @@ void move_loop()
 
         if(abs(x) < 20 && y > 4 && digitalRead(Catch_PIN) == false)
         {
-            if(dt_x > -90 && dt_x < -60)
+            if(dt_x > -60 && dt_x < -40)
             {
                 MoveSpeed = MoveSpeed * 0.7;
             }
-            else if(dt_x <= -90)
+            else if(dt_x <= -60)
             {
                 MoveSpeed = MoveSpeed * 0.4;
             }
@@ -233,7 +247,7 @@ void move_loop()
             moveDeg = -ballPID.output(); */
 
 
-        if(abs(x) < 10 && y > 0 )
+        if(abs(x) < 12 && y > 0 )
         {
 /*             change_kd = (15.0f - fabs(x))/ 50.0f;
             if(change_kd < 0)            
@@ -244,14 +258,8 @@ void move_loop()
             ballPID.setGains(1.0f, 0.0f, change_kd);
             ballPID.process(x, 0.0f, true);
             moveDeg = -ballPID.output(); */ 
-            if(y > 30)
-            {
-                moveDeg = mouth_ball_deg;
-            }
-            else
-            {
-                moveDeg = -ballPID.output();
-            }
+            moveDeg = mouth_ball_deg;
+
             //moveDeg = -ballPID.output();
 
             if(digitalRead(Catch_PIN) == true)

@@ -109,8 +109,21 @@ void motors_Update()
     
     float realmoveX = 0;
     float realmoveY = 0;
-    float moveDeg_X = cos(deg_radian(moveDeg));
-    float moveDeg_Y = sin(deg_radian(moveDeg));
+
+    float moveDeg_X = 0;
+    float moveDeg_Y = 0;
+    if (ball_dis > 90)
+    {
+        moveDeg_X = cos(deg_radian(ball_deg));
+        moveDeg_Y = sin(deg_radian(ball_deg));
+    }
+    else
+    {
+        moveDeg_X = cos(deg_radian(moveDeg));
+        moveDeg_Y = sin(deg_radian(moveDeg));
+    }
+    
+
 
     float MOVE_Deg2 = 0;
 /* realmovedegd（ライン＋回り込み角度）
@@ -162,7 +175,7 @@ void motors_Update()
         MOVE_Deg2 = atan2(sin(deg_radian(Save_GoalDeg + 180)) * 1.2 + moveDeg_Y, cos(deg_radian(Save_GoalDeg + 180)) * 1.2 + moveDeg_X);
         motorsMove(radian_deg(MOVE_Deg2), MotorSpeed);
     }
-    else if (LineNeed == true && Line_over == false)
+    else if ((LineNeed == true || Angel.last_detect_time < 30) && Line_over == false)
     {
         digitalWrite(LED4, HIGH);
         float LineMove_X = cos(deg_radian(LineMoveDegd));
