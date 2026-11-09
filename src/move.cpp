@@ -114,11 +114,11 @@ void move_loop()
     if (IRv.detected == false || LineNeed == true)
     {
         ball_dis_integral = 0;
-        MoveSpeed = MotorSpeed;
+        MoveSpeed = 75;
     }
     else
     {
-        MoveSpeed = constrain(MotorSpeed + ball_dis_integral, MotorSpeed, 85);
+        MoveSpeed = constrain(MotorSpeed + ball_dis_integral, MotorSpeed, 100);
     }
 
     if (MoveSpeed >= 88)

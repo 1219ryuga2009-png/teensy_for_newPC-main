@@ -292,9 +292,9 @@ void LineRead_update()
     {
         SideLineV[i] = Linedata.values[2] >> i & 0b01;
     }
-    Angel.Right = SideLineV[2];
+    Angel.Right = SideLineV[2]; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     Angel.Back = SideLineV[1];
-    Angel.Left = SideLineV[0];
+    Angel.Left = 0;
     Side_Need = Angel.Left || Angel.Right || Angel.Back;
     if (Side_Need == true)
     {
@@ -598,7 +598,8 @@ switch (amount_no_BlockLine)
     Serial.print(", LineState=");
     Serial.println(int(Line_state)); */
 
-    Line_trace_check();
+    Line_trace = false;
+    //Line_trace_check();
 /* 
     for (int i = 0; i < Linedata.amountData; i++)
     {
@@ -647,9 +648,9 @@ switch (amount_no_BlockLine)
 /*     Serial.print("cos");
     Serial.print(cos(deg_radian(GoalDeg)));
     Serial.print("GoalDeg=");
-    Serial.print(GoalDeg);
-    Serial.print("GoalDis=");
-    Serial.print(GoalDis);
+    Serial.print(GoalDeg); */
+    Serial.print("Goaly=");
+    Serial.print(GoalY);
     Serial.print(", GoalX=");
     Serial.print(GoalX);
     Serial.print(",SaX=");
@@ -657,7 +658,7 @@ switch (amount_no_BlockLine)
     Serial.print(", GoalY=");
     Serial.print(GoalY);
     Serial.print(",SaY=");
-    Serial.print(-SaveGoalY); */
+    Serial.print(-SaveGoalY); 
     
     
 /* 
@@ -757,13 +758,13 @@ switch (amount_no_BlockLine)
     
     Goalout = false;
 
-    if (CamGoalDetected && GoalY < Goal_over_dis && GoalY > 1 && abs(GoalX) < 40 && Line_over == false) //定数は仮！！！(CamGoalDetected == true && GoalDeg < 30 && GoalY < Goal_over_dis) // 0 - 140 - 140
+    if (CamGoalDetected && GoalY < Goal_over_dis && GoalY > 1 && abs(GoalX) < 65 && Line_over == false) //定数は仮！！！(CamGoalDetected == true && GoalDeg < 30 && GoalY < Goal_over_dis) // 0 - 140 - 140
     {
         Angel.Linedegr = deg_radian(GoalDeg);
         Goalout = true;
         position = 1;
     }
-    else if (SaveGoalDetected == true && -SaveGoalY > 0 && -SaveGoalY < 55 && abs(SaveGoalX) < 40 && abs(DegRangeChange(CameraV.court_deg + yaw_BNO)) < 45)
+    else if (SaveGoalDetected == true && -SaveGoalY > 0 && -SaveGoalY < 55 && abs(SaveGoalX) < 65 && abs(DegRangeChange(CameraV.court_deg + yaw_BNO)) < 45)
     {
         Goalout = true;
         Angel.Linedegr = deg_radian(Save_GoalDeg);

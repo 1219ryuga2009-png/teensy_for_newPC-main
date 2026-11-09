@@ -64,7 +64,7 @@ void motors_Update()
     } */
     //PIDpower = abs(GoalDeg) * 25 / 90;
     
-    if ((LineNeed == false || abs(yaw_BNO) < 30) && Delection_Mode == true &&  IRv.detected == true && CamGoalDetected == true && y > -10)
+    if ((LineNeed == false || abs(yaw_BNO) < 30) && Delection_Mode == true &&  IRv.detected == true && CamGoalDetected == true && y > -30)
     {
         motorsPidProcess(&headingPID, -GoalDeg, 0.0f);
         //PIDpower = abs(GoalDeg) * 25 / 75;
@@ -174,7 +174,7 @@ void motors_Update()
         digitalWrite(LED4, HIGH);
         MOVE_Deg2 = atan2(sin(deg_radian(Save_GoalDeg + 180)) * 1.2 + moveDeg_Y, cos(deg_radian(Save_GoalDeg + 180)) * 1.2 + moveDeg_X);
         motorsMove(radian_deg(MOVE_Deg2), MotorSpeed);
-    }
+    } 
     else if ((LineNeed == true || Angel.last_detect_time < 30) && Line_over == false)
     {
         digitalWrite(LED4, HIGH);

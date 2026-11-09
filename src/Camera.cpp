@@ -1,7 +1,7 @@
 #include "Camera.h"
 
 bool SettingGoal = 0;
-bool Delection_Mode = 0;
+bool Delection_Mode = 1;
 bool DEForATTA = 1;
 
 unsigned long Separate_time = 0;
